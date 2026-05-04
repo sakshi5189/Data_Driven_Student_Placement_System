@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<h3 class="mb-3">🏢 HR Dashboard</h3>
+
+<div class="row">
+  <!-- Add Company -->
+  <div class="col-md-5">
+    <div class="card p-3 shadow-sm card-hover">
+      <h5>Add Company</h5>
+      <form method="POST">
+        <input name="name" placeholder="Company Name" class="form-control mb-2">
+        <input name="cgpa" placeholder="Min CGPA" class="form-control mb-2">
+        <input name="skill" placeholder="Required Skill" class="form-control mb-2">
+        <button class="btn btn-success w-100">Add</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Company List -->
+  <div class="col-md-7">
+    <div class="card p-3 shadow-sm card-hover">
+      <h5>Companies</h5>
+      <table class="table table-hover">
+        <tr>
+          <th>Name</th><th>Min CGPA</th><th>Skill</th>
+        </tr>
+        {% for c in companies %}
+        <tr>
+          <td>{{ c.name }}</td>
+          <td>{{ c.min_cgpa }}</td>
+          <td>{{ c.skill }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

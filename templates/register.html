@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="col-md-4 mx-auto">
+  <div class="card p-4 shadow-sm">
+    <h4 class="text-center mb-3">Register</h4>
+    <form method="POST">
+      <input name="name" placeholder="Name" class="form-control mb-2">
+      <input name="email" placeholder="Email" class="form-control mb-2">
+      <input name="password" type="password" placeholder="Password" class="form-control mb-2">
+
+      <select name="role" class="form-control mb-3">
+        <option value="student">Student</option>
+        <option value="officer">Placement Officer</option>
+        <option value="hr">HR</option>
+      </select>
+
+      <button class="btn btn-success w-100">Register</button>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
