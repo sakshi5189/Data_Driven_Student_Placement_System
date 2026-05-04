@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<h3 class="mb-3">🧑‍💼 Placement Officer</h3>
+
+<div class="row">
+  <!-- Add Student -->
+  <div class="col-md-5">
+    <div class="card p-3 shadow-sm card-hover">
+      <h5>Add Student</h5>
+      <form method="POST">
+        <input name="name" placeholder="Name" class="form-control mb-2">
+        <input name="cgpa" placeholder="CGPA" class="form-control mb-2">
+        <input name="skill" placeholder="Skills (comma separated)" class="form-control mb-2">
+        <button class="btn btn-primary w-100">Add</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Student List -->
+  <div class="col-md-7">
+    <div class="card p-3 shadow-sm card-hover">
+      <h5>Students</h5>
+      <table class="table table-hover">
+        <tr>
+          <th>Name</th><th>CGPA</th><th>Skill</th>
+        </tr>
+        {% for s in students %}
+        <tr>
+          <td>{{ s.name }}</td>
+          <td>{{ s.cgpa }}</td>
+          <td>{{ s.skill }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

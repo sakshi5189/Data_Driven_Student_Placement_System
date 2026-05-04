@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<h3 class="mb-3">🎓 Student Dashboard</h3>
+
+<!-- Profile Card -->
+<div class="card p-3 mb-4 shadow-sm card-hover">
+  {% if student %}
+    <h5>{{ student.name }}</h5>
+    <div class="row">
+      <div class="col-md-4"><b>CGPA:</b> {{ student.cgpa }}</div>
+      <div class="col-md-8"><b>Skills:</b> {{ student.skill }}</div>
+    </div>
+  {% else %}
+    <p class="text-muted">No profile found. Ask officer to add you.</p>
+  {% endif %}
+</div>
+
+<!-- Stats -->
+<div class="row mb-4">
+  <div class="col-md-4">
+    <div class="card p-3 shadow-sm text-center card-hover">
+      <h6>Total Companies</h6>
+      <h2>{{ notifications|length }}</h2>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card p-3 shadow-sm text-center card-hover">
+      <h6>Eligible</h6>
+      <h2>
+        {{ notifications|selectattr('status','equalto','Eligible')|list|length }}
+      </h2>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card p-3 shadow-sm text-center card-hover">
+      <h6>Not Eligible</h6>
+      <h2>
+        {{ notifications|selectattr('status','equalto','Not Eligible')|list|length }}
+      </h2>
+    </div>
+  </div>
+</div>
+
+<!-- Notifications -->
+<h5 class="mb-2">🔔 Notifications</h5>
+
+{% for n in notifications %}
+<div class="card p-3 mb-2 shadow-sm card-hover d-flex flex-row justify-content-between align-items-center">
+  <div>
+    <span class="badge-dot {{ 'bg-success' if n.status=='Eligible' else 'bg-danger' }}"></span>
+    <b>{{ n.company }}</b>
+  </div>
+
+  {% if n.status == "Eligible" %}
+    <span class="badge bg-success">Eligible 🎉</span>
+  {% else %}
+    <span class="badge bg-danger">Not Eligible</span>
+  {% endif %}
+</div>
+{% endfor %}
+
+{% endblock %}
