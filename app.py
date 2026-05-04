@@ -7,41 +7,60 @@ import os
 app = Flask(__name__)
 app.secret_key = "secret123"
 
-# ---------------- DB ----------------
+# ---------- DATABASE ----------
 def get_db():
     conn = sqlite3.connect("database.db")
     conn.row_factory = sqlite3.Row
     return conn
 
-# Create tables
-conn = get_db()
-conn.execute('''CREATE TABLE IF NOT EXISTS users(
-    id INTEGER PRIMARY KEY,
-    name TEXT,
-    email TEXT,
-    password TEXT,
-    role TEXT
-)''')
+def init_db():
+    conn = get_db()
 
-conn.execute('''CREATE TABLE IF NOT EXISTS students(
-    id INTEGER PRIMARY KEY,
-    name TEXT,
-    cgpa REAL,
-    skill TEXT
-)''')
+    conn.execute('''
+    CREATE TABLE IF NOT EXISTS users(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        email TEXT UNIQUE,
+        password TEXT,
+        role TEXT
+    )''')
 
-conn.execute('''CREATE TABLE IF NOT EXISTS companies(
-    id INTEGER PRIMARY KEY,
-    name TEXT,
-    min_cgpa REAL,
-    skill TEXT
-)''')
-conn.commit()
+    conn.execute('''
+    CREATE TABLE IF NOT EXISTS students(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        cgpa REAL,
+        skill TEXT
+    )''')
 
-# ---------------- EMAIL ----------------
+    conn.execute('''
+    CREATE TABLE IF NOT EXISTS companies(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        min_cgpa REAL,
+        skill TEXT
+    )''')
+
+    conn.execute('''
+    CREATE TABLE IF NOT EXISTS sent_emails(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        student_name TEXT,
+        company_name TEXT
+    )''')
+
+    conn.commit()
+    conn.close()
+
+init_db()
+
+# ---------- EMAIL ----------
 def send_email(to_email, subject, message):
     sender_email = os.getenv("EMAIL_USER")
     sender_password = os.getenv("EMAIL_PASS")
+
+    if not sender_email or not sender_password:
+        print("EMAIL NOT CONFIGURED")
+        return
 
     msg = MIMEText(message)
     msg['Subject'] = subject
@@ -49,15 +68,17 @@ def send_email(to_email, subject, message):
     msg['To'] = to_email
 
     try:
-        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server = smtplib.SMTP("smtp.gmail.com", 587)
         server.starttls()
         server.login(sender_email, sender_password)
         server.send_message(msg)
         server.quit()
-    except Exception as e:
-        print("Email error:", e)
+        print("EMAIL SENT")
 
-# ---------------- ROUTES ----------------
+    except Exception as e:
+        print("EMAIL ERROR:", e)
+
+# ---------- ROUTES ----------
 
 @app.route('/')
 def home():
@@ -68,12 +89,16 @@ def home():
 def register():
     if request.method == 'POST':
         conn = get_db()
-        conn.execute(
-            "INSERT INTO users(name,email,password,role) VALUES(?,?,?,?)",
-            (request.form['name'], request.form['email'],
-             request.form['password'], request.form['role'])
-        )
-        conn.commit()
+        try:
+            conn.execute(
+                "INSERT INTO users(name,email,password,role) VALUES(?,?,?,?)",
+                (request.form['name'], request.form['email'],
+                 request.form['password'], request.form['role'])
+            )
+            conn.commit()
+        except:
+            return "User already exists"
+
         return redirect('/login')
 
     return render_template('register.html')
@@ -83,6 +108,7 @@ def register():
 def login():
     if request.method == 'POST':
         conn = get_db()
+
         user = conn.execute(
             "SELECT * FROM users WHERE email=? AND password=?",
             (request.form['email'], request.form['password'])
@@ -99,6 +125,9 @@ def login():
             else:
                 return redirect('/hr')
 
+        else:
+            return "Invalid Login"
+
     return render_template('login.html')
 
 # LOGOUT
@@ -107,9 +136,12 @@ def logout():
     session.clear()
     return redirect('/login')
 
-# ---------------- STUDENT ----------------
+# ---------- STUDENT ----------
 @app.route('/student')
 def student():
+    if 'user' not in session:
+        return redirect('/login')
+
     conn = get_db()
 
     student = conn.execute(
@@ -128,23 +160,45 @@ def student():
 
     if student:
         for c in companies:
-            if student['cgpa'] >= c['min_cgpa'] and c['skill'] in student['skill']:
-                notifications.append({"company": c['name'], "status": "Eligible"})
 
-                # SEND EMAIL
-                send_email(
-                    user['email'],
-                    "Placement Update",
-                    f"You are eligible for {c['name']}"
-                )
+            if student['cgpa'] >= c['min_cgpa'] and c['skill'] in student['skill']:
+                status = "Eligible"
+
+                # check if email already sent
+                check = conn.execute(
+                    "SELECT * FROM sent_emails WHERE student_name=? AND company_name=?",
+                    (student['name'], c['name'])
+                ).fetchone()
+
+                if not check:
+                    send_email(
+                        user['email'],
+                        "Placement Eligibility",
+                        f"You are eligible for {c['name']}"
+                    )
+
+                    conn.execute(
+                        "INSERT INTO sent_emails(student_name,company_name) VALUES(?,?)",
+                        (student['name'], c['name'])
+                    )
+                    conn.commit()
+
             else:
-                notifications.append({"company": c['name'], "status": "Not Eligible"})
+                status = "Not Eligible"
+
+            notifications.append({
+                "company": c['name'],
+                "status": status
+            })
 
     return render_template('student.html', student=student, notifications=notifications)
 
-# ---------------- OFFICER ----------------
+# ---------- OFFICER ----------
 @app.route('/officer', methods=['GET','POST'])
 def officer():
+    if 'user' not in session:
+        return redirect('/login')
+
     conn = get_db()
 
     if request.method == 'POST':
@@ -155,11 +209,15 @@ def officer():
         conn.commit()
 
     students = conn.execute("SELECT * FROM students").fetchall()
+
     return render_template('officer.html', students=students)
 
-# ---------------- HR ----------------
+# ---------- HR ----------
 @app.route('/hr', methods=['GET','POST'])
 def hr():
+    if 'user' not in session:
+        return redirect('/login')
+
     conn = get_db()
 
     if request.method == 'POST':
@@ -170,8 +228,9 @@ def hr():
         conn.commit()
 
     companies = conn.execute("SELECT * FROM companies").fetchall()
+
     return render_template('hr.html', companies=companies)
 
-# ---------------- RUN ----------------
+# ---------- RUN ----------
 if __name__ == "__main__":
     app.run(debug=True)
